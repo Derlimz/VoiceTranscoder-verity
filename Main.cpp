@@ -14,6 +14,7 @@
 #include <CRC32.h>
 #include <SteamID.h>
 #include "API.h"
+#include "Verity.h" // VERITY
 #ifdef min
 #undef min
 #endif
@@ -277,6 +278,7 @@ qboolean OnClientConnected(edict_t *pClient, const char *pszName, const char *ps
 	clientData.NewCodec2->ResetState();
 	clientData.SampleRate = nullptr;
 	clientData.OldCodec->ResetState();
+	Verity_ResetClient(playerSlot); // VERITY
 
 	RETURN_META_VALUE(MRES_IGNORED, META_RESULT_ORIG_RET(bool32_t));
 }
@@ -284,6 +286,8 @@ qboolean OnClientConnected(edict_t *pClient, const char *pszName, const char *ps
 void OnClientDisconnected(edict_t *pClient) {
 	int playerSlot = ENTINDEX(pClient);
 	clientData_t &clientData = g_clientData[playerSlot - 1];
+
+	Verity_ResetClient(playerSlot); // VERITY: drop the flag and any unsent audio
 
 	if (clientData.IsSpeaking) {
 		clientData.IsSpeaking = false;
@@ -392,6 +396,7 @@ void OnFrameStarted() {
 		if (clientData.IsSpeaking && steady_clock::now() >= clientData.VoiceEndTime) {
 			clientData.IsSpeaking = false;
 
+			Verity_OnStopSpeak(clientIndex + 1); // VERITY: write the WAV before the forward fires
 			g_OnClientStopSpeak(clientIndex + 1);
 		}
 	}
@@ -576,6 +581,7 @@ C_DLLEXPORT int Meta_Attach(PLUG_LOADTIME now, META_FUNCTIONS *pFunctionTable, m
 	g_engfuncs.pfnAddServerCommand("VTC_Path", &VTC_Path);
 
 	VTC_InitCvars();
+	Verity_Init(); // VERITY
 	VTC_InitAPI();
 	VTC_InitConfig();
 	VTC_ExecConfig();
@@ -665,6 +671,7 @@ void SV_ParseVoiceData_Hook(client_t *pClient) {
 
 	int16_t rawSamples[MAX_DECOMPRESSED_VOICEPACKET_SAMPLES];
 	size_t rawSampleCount;
+	uint32_t verityVpcMask = 0; // VERITY: new-codec commands seen in this packet (debug log)
 
 	// Validate new codec packet
 	if (pClientData->HasNewCodec) {
@@ -710,6 +717,7 @@ void SV_ParseVoiceData_Hook(client_t *pClient) {
 		rawSampleCount = 0;
 		while (buf.Size() - buf.TellRead() - sizeof(uint32_t) >= sizeof(uint8_t) + sizeof(uint16_t)) {
 			uint8_t vpc = buf.ReadUInt8();
+			if (vpc < 32) verityVpcMask |= 1u << vpc; // VERITY
 
 			switch (vpc) {
 				case VPC_SETSAMPLERATE: {
@@ -830,6 +838,10 @@ void SV_ParseVoiceData_Hook(client_t *pClient) {
 	} else {
 		rawSampleCount = pClientData->OldCodec->Decode((const uint8_t *)receivedBytes, receivedBytesCount, rawSamples, ARRAYSIZE(rawSamples));
 	}
+
+	// VERITY: record the decoded 8 kHz PCM (read-only; rawSamples is not modified)
+	Verity_OnVoiceDecoded(clientIndex, pClientData->HasNewCodec, pClientData->SampleRate.HasValue() ? *pClientData->SampleRate : 0,
+		verityVpcMask, receivedBytesCount, rawSamples, rawSampleCount);
 
 	//LOG_CONSOLE(PLID, "%f %d %d", currentMicroSeconds / 1000000.0, receivedBytesCount, rawSampleCount);
 

@@ -36,7 +36,8 @@ add_library(${PROJECT_NAME} MODULE
     VoiceCodec_SILK.h VoiceCodec_SILK.cpp
     VoiceCodec_Speex.h VoiceCodec_Speex.cpp
     VoiceTranscoderAPI.h
-    
+    Verity.h Verity.cpp # VERITY
+
     Hashers/CRC32.h Hashers/CRC32.cpp
 
     MultiThreading/Mutex.h MultiThreading/Mutex.cpp

@@ -1,0 +1,43 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The repo's win32-msvc-xp-static-ipo.cmake needs the VS2017 v141_xp toolset, which the
+      # hosted runners no longer ship; reproduce its relevant settings (Win32, static CRT, IPO).
+      - name: Configure
+        run: >
+          cmake -S . -B build -A Win32
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Check exports
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -property installationPath
+          $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe | Where-Object FullName -match 'Hostx64\\x86' | Select-Object -First 1
+          $out = & $dumpbin.FullName /exports /headers build\VoiceTranscoder.dll | Out-String
+          foreach ($sym in 'GiveFnptrsToDll', 'Meta_Query', 'Meta_Attach', 'Meta_Detach', 'GetEntityAPI2') {
+            if ($out -notmatch $sym) { throw "missing export $sym" }
+          }
+          if ($out -notmatch '14C machine \(x86\)') { throw 'not a Win32 DLL' }
+          $out -split "`n" | Select-String 'machine|GiveFnptrs|Meta_|GetEntityAPI'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoiceTranscoder-verity-win32
+          path: |
+            build/VoiceTranscoder.dll
+            VoiceTranscoder.cfg
