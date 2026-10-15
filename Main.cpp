@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <array>
 #include <cinttypes>
+#include <string> // VERITY: build fix, newer MSVC no longer includes it transitively
 #include <opus.h>
 
 #if !defined(_WIN32) && !defined(__linux__)
