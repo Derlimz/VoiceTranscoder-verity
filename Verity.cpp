@@ -6,6 +6,9 @@
 // When VTC detects the client stopped speaking, a buffer of >= 0.4 s is written to
 // <gamedir>/addons/verity/voice/<clientIndex>_<seq>.wav.tmp and renamed to .wav;
 // vtc_verity_lastwav then holds the gamedir-relative path during OnClientStopSpeak.
+//
+// vtc_verity_sender <clientIndex> makes sounds started by PlaySound arrive as voice from that
+// slot (so the client's voice HUD names the speaker); 0 keeps the stock anonymous sender.
 
 #include "Verity.h"
 #include <extdll.h>
@@ -52,6 +55,8 @@ namespace {
 	cvar_t g_cvarVerityDebug = {"vtc_verity_debug", "0", FCVAR_EXTDLL, 0, nullptr};
 	cvar_t *g_pcvarVerityDebug;
 	cvar_t g_cvarVerityLastWav = {"vtc_verity_lastwav", "", FCVAR_EXTDLL, 0, nullptr};
+	cvar_t g_cvarVeritySender = {"vtc_verity_sender", "0", FCVAR_EXTDLL, 0, nullptr};
+	cvar_t *g_pcvarVeritySender;
 
 	bool IsValidClientIndex(size_t clientIndex) {
 		return clientIndex >= 1 && clientIndex <= (size_t)gpGlobals->maxClients;
@@ -180,6 +185,8 @@ void Verity_Init() {
 	CVAR_REGISTER(&g_cvarVerityDebug);
 	g_pcvarVerityDebug = CVAR_GET_POINTER(g_cvarVerityDebug.name);
 	CVAR_REGISTER(&g_cvarVerityLastWav);
+	CVAR_REGISTER(&g_cvarVeritySender);
+	g_pcvarVeritySender = CVAR_GET_POINTER(g_cvarVeritySender.name);
 
 	g_engfuncs.pfnAddServerCommand("vtc_verity_listen", &Cmd_VerityListen);
 }
@@ -234,6 +241,15 @@ void Verity_OnVoiceDecoded(size_t clientIndex, bool hasNewCodec, int sampleRate,
 
 	vc.Samples16k.resize(buffered + take * 2);
 	SKP_Silk_resampler(&vc.Resampler, &vc.Samples16k[buffered], samples8k, (SKP_int32)take);
+}
+
+size_t Verity_PlaySender() {
+	if (g_pcvarVeritySender == nullptr) {
+		return 0;
+	}
+
+	int sender = int(g_pcvarVeritySender->value);
+	return IsValidClientIndex(sender) ? size_t(sender) : 0;
 }
 
 void Verity_OnStopSpeak(size_t clientIndex) {

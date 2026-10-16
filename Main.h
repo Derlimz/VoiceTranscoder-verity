@@ -44,6 +44,7 @@ struct playSound_t {
 	size_t currentSample;
 	size_t PlayedNewEncodedSampleCount;
 	client_t *receiver;
+	size_t senderIndex; // VERITY: client slot shown as the speaker, 0 = none (stock behaviour)
 	time_point<steady_clock> OldEncodedDataSendTime;
 	time_point<steady_clock> NewEncodedDataSendTime;
 	std::unique_ptr<VoiceCodec_Speex> oldCodec;

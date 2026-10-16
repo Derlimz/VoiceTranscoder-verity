@@ -2,6 +2,7 @@
 #include <extdll.h>
 #include <meta_api.h>
 #include "Main.h"
+#include "Verity.h" // VERITY
 #include <EngineUTIL.h>
 #include <memory>
 #include "VoiceCodecs/SILK/SKP_Silk_SigProc_FIX.h"
@@ -141,6 +142,7 @@ void VoiceTranscoderAPI::PlaySound(size_t receiverClientIndex, const char *sound
 
 	playSound_t playSound;
 	playSound.receiver = client;
+	playSound.senderIndex = Verity_PlaySender(); // VERITY
 	playSound.currentSample = 0;
 	playSound.PlayedNewEncodedSampleCount = 0;
 	playSound.NewEncodedDataSendTime = (playSound.OldEncodedDataSendTime = steady_clock::now());

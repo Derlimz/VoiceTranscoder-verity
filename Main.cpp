@@ -436,7 +436,7 @@ void OnFrameStarted() {
 
 					if (EngineUTIL::MSG_GetRemainBytesCount(&pDestClient->m_Datagram) >= sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint16_t) + oldEncodedDataSize) {
 						EngineUTIL::MSG_WriteUInt8_UnSafe(&pDestClient->m_Datagram, SVC_VOICEDATA);
-						EngineUTIL::MSG_WriteUInt8_UnSafe(&pDestClient->m_Datagram, MAX_CLIENTS);
+						EngineUTIL::MSG_WriteUInt8_UnSafe(&pDestClient->m_Datagram, playSound.senderIndex ? uint8_t(playSound.senderIndex - 1) : MAX_CLIENTS); // VERITY: speaker slot
 						EngineUTIL::MSG_WriteUInt16_UnSafe(&pDestClient->m_Datagram, oldEncodedDataSize);
 						EngineUTIL::MSG_WriteBuf_UnSafe(&pDestClient->m_Datagram, oldEncodedData.data(), oldEncodedDataSize);
 					}
@@ -497,7 +497,7 @@ void OnFrameStarted() {
 
 					if (EngineUTIL::MSG_GetRemainBytesCount(&pDestClient->m_Datagram) >= sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint16_t) + newEncodedDataSize) {
 						EngineUTIL::MSG_WriteUInt8_UnSafe(&pDestClient->m_Datagram, SVC_VOICEDATA);
-						EngineUTIL::MSG_WriteUInt8_UnSafe(&pDestClient->m_Datagram, MAX_CLIENTS);
+						EngineUTIL::MSG_WriteUInt8_UnSafe(&pDestClient->m_Datagram, playSound.senderIndex ? uint8_t(playSound.senderIndex - 1) : MAX_CLIENTS); // VERITY: speaker slot
 						EngineUTIL::MSG_WriteUInt16_UnSafe(&pDestClient->m_Datagram, newEncodedDataSize);
 						EngineUTIL::MSG_WriteBuf_UnSafe(&pDestClient->m_Datagram, newEncodedData.data(), newEncodedDataSize);
 					}
